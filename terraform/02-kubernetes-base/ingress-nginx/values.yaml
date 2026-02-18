@@ -1,0 +1,44 @@
+# ingress-nginx Helm values for GKE
+# Chart: ingress-nginx/ingress-nginx
+# Repo: https://kubernetes.github.io/ingress-nginx
+
+controller:
+  # 2 replicas for high availability
+  replicaCount: 2
+
+
+  # Allow snippets for advanced configuration
+  # WARNING: This allows arbitrary NGINX config - use only in trusted environments
+  allowSnippetAnnotations: true
+  
+  # GKE will automatically provision a Cloud Load Balancer
+  service:
+    type: LoadBalancer
+    annotations:
+      cloud.google.com/load-balancer-type: "External"
+    # Preserve real client IP address
+    externalTrafficPolicy: Local
+
+  # Resource limits (important for spot nodes)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Metrics endpoint for Prometheus (Phase 2)
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: false  # Will enable when Prometheus is installed
+
+  # Validates Ingress resources before applying
+  admissionWebhooks:
+    enabled: true
+
+# Returns 404 for unmatched routes
+defaultBackend:
+  enabled: true
+  replicaCount: 1

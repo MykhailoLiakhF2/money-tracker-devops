@@ -1,0 +1,10 @@
+# =============================================================================
+# Shared Resources — Example Values
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in real values:
+#   cp terraform.tfvars.example terraform.tfvars
+# =============================================================================
+
+credentials_file = "/path/to/your/terraform-sa-key.json"
+project_id       = "your-gcp-project-id"
+region           = "europe-central2"

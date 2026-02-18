@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+data:
+  redis.conf: |
+    # ==========================================================
+    # Redis Configuration — Money Tracker Production Edition
+    # ==========================================================
+
+    # --- Memory Management ---
+    # Without maxmemory, Redis grows until OOM kill.
+    # 128MB is enough for caching categories + rate limiting.
+    maxmemory 128mb
+
+    # When memory is full, evict least recently used keys.
+    # allkeys-lru is safest for cache: even keys without TTL get evicted.
+    # volatile-lru only evicts keys with TTL — dangerous if someone forgets to set TTL.
+    maxmemory-policy allkeys-lru
+
+    # --- Persistence (AOF) ---
+    # Append-Only File: logs every write operation to disk.
+    # On restart, Redis replays the log to restore state.
+    appendonly yes
+
+    # Sync to disk every second. Max 1 second of data loss on crash.
+    # "always" = safer but slower, "no" = faster but risky.
+    appendfsync everysec
+
+    # Disable RDB snapshots — AOF is sufficient for our use case.
+    save ""
+
+    # --- Network ---
+    # Listen on all interfaces (required in Kubernetes — pod IP is dynamic).
+    bind 0.0.0.0
+
+    # Disable protected mode (we use NetworkPolicy for access control).
+    protected-mode no
+
+    # --- Logging ---
+    loglevel notice

@@ -1,0 +1,16 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-pdb
+spec:
+  # -----------------------------------------------------------------------
+  # Ensures at least 1 backend pod is always running during:
+  #   - Node drains (kubectl drain)
+  #   - Cluster upgrades (GKE auto-upgrade)
+  #   - Node pool scaling down
+  # Without PDB, K8s can evict ALL pods simultaneously → downtime.
+  # -----------------------------------------------------------------------
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: backend

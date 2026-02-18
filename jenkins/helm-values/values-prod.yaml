@@ -1,0 +1,109 @@
+# Jenkins Helm values — Prod (GKE)
+# Chart: jenkins/jenkins
+# Docs: https://github.com/jenkinsci/helm-charts
+
+controller:
+  # Use LTS for stability
+  image:
+    tag: "lts-jdk17"
+
+  # Resource limits for controller (coordination only, no builds here)
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+  # Jenkins URL (must match ingress)
+  jenkinsUrl: "https://jenkins.your-domain.com"
+
+  # ===== Ingress =====
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostName: jenkins.your-domain.com
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+      # Personal IP + GitHub webhook IPs (https://api.github.com/meta)
+      nginx.ingress.kubernetes.io/whitelist-source-range: "<YOUR_IP>/32,192.30.252.0/22,185.199.108.0/22,140.82.112.0/20,143.55.64.0/20,2a0a:a440::/29,2606:50c0::/32"
+    tls:
+      - secretName: jenkins-tls
+        hosts:
+          - jenkins.your-domain.com
+
+  # ===== Plugins =====
+  # No pinned versions — let Jenkins resolve latest compatible
+  installPlugins:
+    - kubernetes
+    - workflow-aggregator
+    - git
+    - github-branch-source
+    - pipeline-stage-view
+    - credentials-binding
+    - docker-workflow
+    - configuration-as-code
+    - job-dsl
+    - blueocean
+    - prometheus
+
+  installLatestPlugins: true
+  installLatestSpecifiedPlugins: true
+
+  # ===== JCasC (Jenkins Configuration as Code) =====
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      welcome-message: |
+        jenkins:
+          systemMessage: "Money Tracker Production Edition — Jenkins CI"
+      security-settings: |
+        jenkins:
+          securityRealm:
+            local:
+              allowsSignup: false
+          authorizationStrategy:
+            loggedInUsersCanDoAnything:
+              allowAnonymousRead: false
+
+
+  # ===== Kubernetes Cloud (dynamic agents) =====
+  # Default cloud config from Helm chart is fine for basic setup
+  # Agents will run as pods in jenkins namespace
+
+  # Admin password — change after first login!
+  admin:
+    password: "changeme-after-first-login"
+
+  # Persistence for Jenkins home
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: standard-rwo
+
+  # Service account
+  serviceAccount:
+    create: true
+    name: jenkins
+
+# ===== Agent defaults =====
+agent:
+  enabled: true
+  # Default agent image
+  image:
+    repository: jenkins/inbound-agent
+    tag: "latest-jdk17"
+  resources:
+    requests:
+      cpu: 256m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  # Agents get cleaned up after build
+  podRetention: "Never"
+  # Timeout for agent to connect
+  connectTimeout: 300

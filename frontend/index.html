@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Money Tracker</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 1000px; margin: 40px auto; background: #f0f2f5; color: #333; padding: 0 20px; }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .full-width { grid-column: 1 / -1; text-align: center; }
+        .total-money { font-size: 36px; color: #2ecc71; margin-top: 10px; font-weight: bold; }
+        .account-item, .category-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        select, input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+        .btn { color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 5px; }
+        .btn-green { background: #2ecc71; }
+        .btn-blue { background: #3498db; }
+        .btn-purple { background: #9b59b6; }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 5px; }
+        .admin-section { margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px; }
+        label { font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .income-text { color: #2ecc71; }
+        .expense-text { color: #e74c3c; }
+        .section-label { font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 4px; padding-top: 8px; border-top: 1px dashed #ddd; }
+
+        /* Credit card progress bar */
+        .credit-info { font-size: 12px; color: #666; margin-top: 4px; }
+        .credit-bar { height: 6px; background: #eee; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+        .credit-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+        /* Transactions link card */
+        .transactions-link { display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 2px dashed #3498db; background: #f8fbff; margin-top: 20px; transition: 0.2s; }
+        .transactions-link:hover { background: #eef5ff; border-color: #2980b9; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 16px; padding: 28px; width: 400px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .modal h3 { border-bottom: none; padding-bottom: 0; margin-bottom: 16px; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 16px; }
+        .modal-buttons .btn { flex: 1; }
+        .btn-outline { background: white; color: #555; border: 1px solid #ddd; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .warning-box { font-size: 12px; color: #856404; padding: 8px 12px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffe082; margin: 8px 0; }
+
+        /* Subcategory indent */
+        .subcategory { padding-left: 20px; font-size: 13px; }
+        .optgroup-label { font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <div class="card full-width">
+            <label>Total Balance</label>
+            <div id="total-balance" class="total-money">0.00</div>
+        </div>
+
+        <div class="card">
+            <h3>Accounts</h3>
+            <div id="accounts-list">Loading...</div>
+        </div>
+
+        <div class="card">
+            <h3>New Transaction</h3>
+            <label>Amount</label>
+            <input type="number" id="amount" placeholder="0.00" step="0.01">
+            <label>Description</label>
+            <input type="text" id="desc" placeholder="What did you buy / earn?">
+            <label>Date</label>
+            <input type="datetime-local" id="txn_date">
+            <label>Account</label>
+            <select id="acc_select"></select>
+            <label>Category</label>
+            <select id="cat_parent_select" onchange="onParentCategoryChange()"></select>
+            <div id="subcategory-block" style="display:none;">
+                <label>Subcategory</label>
+                <select id="cat_sub_select"></select>
+            </div>
+            <button class="btn btn-green" onclick="sendTransaction()">Submit</button>
+        </div>
+    </div>
+
+    <!-- Transactions link -->
+    <div class="card transactions-link" onclick="window.location.href='/transactions.html'">
+        <div>
+            <div style="font-size: 16px; font-weight: bold; color: #2c3e50;">📋 Transaction History</div>
+            <div style="font-size: 13px; color: #888; margin-top: 4px;">View all transactions with filters</div>
+        </div>
+        <div style="font-size: 24px; color: #3498db;">→</div>
+    </div>
+
+    <div class="admin-section">
+        <div class="card">
+            <h3>Transfer Between Accounts</h3>
+            <label>Amount</label>
+            <input type="number" id="trans_amount" placeholder="0.00" step="0.01">
+            <label>From</label>
+            <select id="trans_from_acc"></select>
+            <label>To</label>
+            <select id="trans_to_acc"></select>
+            <button class="btn btn-purple" onclick="sendTransfer()">Execute Transfer</button>
+        </div>
+
+        <div class="card">
+            <h3>Manage Accounts</h3>
+            <input type="text" id="new_acc_name" placeholder="Name (e.g. Cash)">
+            <label>Account Type</label>
+            <select id="new_acc_type" onchange="toggleCreditLimit()">
+                <option value="cash">Cash</option>
+                <option value="debit">Debit Card</option>
+                <option value="credit">Credit Card</option>
+            </select>
+            <div id="credit-limit-block" style="display:none;">
+                <label>Credit Limit</label>
+                <input type="number" id="new_acc_limit" placeholder="20000" step="0.01">
+            </div>
+            <label>Initial Balance</label>
+            <input type="number" id="new_acc_balance" placeholder="0.00" step="0.01">
+            <button class="btn btn-blue" onclick="addAccount()">Create</button>
+        </div>
+
+        <div class="card">
+            <h3>Manage Categories</h3>
+            <div id="categories-list" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #eee; padding: 5px; border-radius: 5px;"></div>
+            <input type="text" id="new_cat_name" placeholder="Name (e.g. Groceries)">
+            <label>Type</label>
+            <select id="new_cat_type">
+                <option value="expense">Expense (↓)</option>
+                <option value="income">Income (↑)</option>
+            </select>
+            <label>Parent Category (optional)</label>
+            <select id="new_cat_parent">
+                <option value="">— Root Category —</option>
+            </select>
+            <button class="btn btn-blue" onclick="addCategory()">Add</button>
+        </div>
+    </div>
+
+    <!-- Edit Account Modal -->
+    <div id="edit-account-modal" class="modal-overlay" onclick="closeEditAccountModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <h3>✏️ Edit Account</h3>
+            <input type="hidden" id="edit_acc_id">
+            <label>Name</label>
+            <input type="text" id="edit_acc_name">
+            <label>Account Type</label>
+            <select id="edit_acc_type" onchange="toggleEditCreditLimit()">
+                <option value="cash">Cash</option>
+                <option value="debit">Debit Card</option>
+                <option value="credit">Credit Card</option>
+            </select>
+            <div id="edit-credit-limit-block" style="display:none;">
+                <label>Credit Limit</label>
+                <input type="number" id="edit_acc_limit" step="0.01">
+            </div>
+            <label>Balance</label>
+            <input type="number" id="edit_acc_balance" step="0.01">
+            <div class="warning-box">⚠️ Changing the balance updates it directly. Use for corrections only.</div>
+            <div class="modal-buttons">
+                <button class="btn btn-green" onclick="saveAccount()">💾 Save</button>
+                <button class="btn-outline" onclick="document.getElementById('edit-account-modal').classList.remove('active')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "/api";
+
+        // Store data globally for access from different functions
+        let allAccounts = [];
+        let allCategories = [];
+
+        async function loadData() {
+            try {
+                const [accRes, catRes] = await Promise.all([
+                    fetch(`${API_URL}/accounts/`),
+                    fetch(`${API_URL}/categories/`)
+                ]);
+                allAccounts = await accRes.json();
+                allCategories = await catRes.json();
+
+                renderAccounts(allAccounts);
+                renderCategoriesList(allCategories);
+                renderDropdowns(allAccounts, allCategories);
+                setDefaultDate();
+            } catch (e) { console.error("API Error:", e); }
+        }
+
+        function setDefaultDate() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('txn_date').value = now.toISOString().slice(0, 16);
+        }
+
+        // --- ACCOUNTS ---
+        function renderAccounts(accounts) {
+            const list = document.getElementById('accounts-list');
+            let total = 0;
+
+            const regular = accounts.filter(a => a.account_type !== 'credit');
+            const credit = accounts.filter(a => a.account_type === 'credit');
+
+            let html = '';
+
+            regular.forEach(a => {
+                total += a.balance;
+                html += renderAccountItem(a);
+            });
+
+            if (credit.length > 0) {
+                html += `<div class="section-label">Credit</div>`;
+                credit.forEach(a => {
+                    total += a.balance;
+                    const used = Math.abs(Math.min(a.balance, 0));
+                    const available = a.credit_limit - used;
+                    const usedPercent = a.credit_limit > 0 ? (used / a.credit_limit * 100) : 0;
+                    const barColor = usedPercent > 80 ? '#e74c3c' : usedPercent > 50 ? '#f39c12' : '#2ecc71';
+
+                    html += `
+                    <div class="account-item" style="flex-wrap: wrap;">
+                        <span>${a.name}</span>
+                        <div>
+                            <strong style="color: ${a.balance < 0 ? '#e74c3c' : '#333'}">${a.balance.toFixed(2)}</strong>
+                            <button class="btn-icon" onclick="editAccount(${a.id})">✏️</button>
+                        </div>
+                        <div style="width: 100%;">
+                            <div class="credit-info">Limit: ${a.credit_limit.toFixed(0)} · Available: ${available.toFixed(0)} · Debt: ${used.toFixed(0)}</div>
+                            <div class="credit-bar">
+                                <div class="credit-bar-fill" style="width: ${usedPercent}%; background: ${barColor};"></div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+
+            list.innerHTML = html;
+            document.getElementById('total-balance').innerText = `${total.toFixed(2)}`;
+            document.getElementById('total-balance').style.color = total >= 0 ? '#2ecc71' : '#e74c3c';
+        }
+
+        function renderAccountItem(a) {
+            const typeLabel = a.account_type === 'debit' ? ' 💳' : '';
+            return `
+            <div class="account-item">
+                <span>${a.name}${typeLabel}</span>
+                <div>
+                    <strong>${a.balance.toFixed(2)}</strong>
+                    <button class="btn-icon" onclick="editAccount(${a.id})">✏️</button>
+                </div>
+            </div>`;
+        }
+
+        // --- CATEGORIES ---
+        function renderCategoriesList(categories) {
+            const list = document.getElementById('categories-list');
+            const parents = categories.filter(c => !c.parent_id);
+
+            list.innerHTML = parents.map(c => {
+                const children = categories.filter(ch => ch.parent_id === c.id);
+                let html = `
+                <div class="category-item">
+                    <span>${c.name} ${c.type === 'income' ? '↑' : '↓'}</span>
+                    <button class="btn-icon" onclick="editCategory(${c.id}, '${c.name}', '${c.type}')">✏️</button>
+                </div>`;
+                children.forEach(ch => {
+                    html += `
+                    <div class="category-item subcategory">
+                        <span>└ ${ch.name}</span>
+                        <button class="btn-icon" onclick="editCategory(${ch.id}, '${ch.name}', '${ch.parent_id ? '' : ch.type}')">✏️</button>
+                    </div>`;
+                });
+                return html;
+            }).join('');
+
+            // Update parent dropdown
+            const parentSelect = document.getElementById('new_cat_parent');
+            parentSelect.innerHTML = '<option value="">— Root Category —</option>' +
+                parents.map(c => `<option value="${c.id}">${c.name} (${c.type === 'income' ? '↑' : '↓'})</option>`).join('');
+        }
+
+        function renderDropdowns(accounts, categories) {
+            const accOptions = accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+            document.getElementById('acc_select').innerHTML = accOptions;
+            document.getElementById('trans_from_acc').innerHTML = accOptions;
+            document.getElementById('trans_to_acc').innerHTML = accOptions;
+
+            // Cascading categories: initially only root categories
+            const parents = categories.filter(c => !c.parent_id);
+            const parentSelect = document.getElementById('cat_parent_select');
+            parentSelect.innerHTML = parents.map(p =>
+                `<option value="${p.id}">${p.name} (${p.type === 'income' ? '↑' : '↓'})</option>`
+            ).join('');
+            onParentCategoryChange();
+        }
+
+        function onParentCategoryChange() {
+            const parentId = parseInt(document.getElementById('cat_parent_select').value);
+            const children = allCategories.filter(c => c.parent_id === parentId);
+            const subBlock = document.getElementById('subcategory-block');
+            const subSelect = document.getElementById('cat_sub_select');
+
+            if (children.length > 0) {
+                subBlock.style.display = 'block';
+                subSelect.innerHTML =
+                    `<option value="${parentId}">— No Subcategory —</option>` +
+                    children.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            } else {
+                subBlock.style.display = 'none';
+                subSelect.innerHTML = '';
+            }
+        }
+
+        function getSelectedCategoryId() {
+            const subSelect = document.getElementById('cat_sub_select');
+            if (document.getElementById('subcategory-block').style.display !== 'none' && subSelect.value) {
+                return parseInt(subSelect.value);
+            }
+            return parseInt(document.getElementById('cat_parent_select').value);
+        }
+
+        // --- TRANSACTIONS ---
+        async function sendTransaction() {
+            const dateVal = document.getElementById('txn_date').value;
+            const data = {
+                amount: parseFloat(document.getElementById('amount').value),
+                description: document.getElementById('desc').value,
+                account_id: parseInt(document.getElementById('acc_select').value),
+                category_id: getSelectedCategoryId(),
+            };
+            if (dateVal) {
+                data.created_at = new Date(dateVal).toISOString();
+            }
+            if (!data.amount || data.amount <= 0) return alert("Enter amount!");
+
+            const res = await fetch(`${API_URL}/transactions/`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                document.getElementById('amount').value = '';
+                document.getElementById('desc').value = '';
+                setDefaultDate();
+                loadData();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Error");
+            }
+        }
+
+        // --- TRANSFERS ---
+        async function sendTransfer() {
+            const data = {
+                from_account_id: parseInt(document.getElementById('trans_from_acc').value),
+                to_account_id: parseInt(document.getElementById('trans_to_acc').value),
+                amount: parseFloat(document.getElementById('trans_amount').value)
+            };
+            if (data.from_account_id === data.to_account_id) return alert("Select different accounts!");
+
+            const res = await fetch(`${API_URL}/transfers/`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) { document.getElementById('trans_amount').value = ''; loadData(); }
+            else {
+                const err = await res.json();
+                alert(err.detail || "Transfer error");
+            }
+        }
+
+        // --- ACCOUNTS CRUD ---
+        function toggleCreditLimit() {
+            const type = document.getElementById('new_acc_type').value;
+            document.getElementById('credit-limit-block').style.display = type === 'credit' ? 'block' : 'none';
+        }
+
+        async function addAccount() {
+            const name = document.getElementById('new_acc_name').value;
+            if (!name) return alert("Enter name!");
+            const data = {
+                name,
+                balance: parseFloat(document.getElementById('new_acc_balance').value) || 0,
+                account_type: document.getElementById('new_acc_type').value,
+                credit_limit: parseFloat(document.getElementById('new_acc_limit')?.value) || 0,
+            };
+
+            const res = await fetch(`${API_URL}/accounts/`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                document.getElementById('new_acc_name').value = '';
+                document.getElementById('new_acc_balance').value = '';
+                loadData();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Error");
+            }
+        }
+
+        function editAccount(id) {
+            const acc = allAccounts.find(a => a.id === id);
+            if (!acc) return;
+            document.getElementById('edit_acc_id').value = acc.id;
+            document.getElementById('edit_acc_name').value = acc.name;
+            document.getElementById('edit_acc_balance').value = acc.balance;
+            document.getElementById('edit_acc_type').value = acc.account_type;
+            document.getElementById('edit_acc_limit').value = acc.credit_limit;
+            toggleEditCreditLimit();
+            document.getElementById('edit-account-modal').classList.add('active');
+        }
+
+        function toggleEditCreditLimit() {
+            const type = document.getElementById('edit_acc_type').value;
+            document.getElementById('edit-credit-limit-block').style.display = type === 'credit' ? 'block' : 'none';
+        }
+
+        function closeEditAccountModal(e) {
+            if (e.target === e.currentTarget) {
+                document.getElementById('edit-account-modal').classList.remove('active');
+            }
+        }
+
+        async function saveAccount() {
+            const id = document.getElementById('edit_acc_id').value;
+            const data = {
+                name: document.getElementById('edit_acc_name').value,
+                balance: parseFloat(document.getElementById('edit_acc_balance').value),
+                account_type: document.getElementById('edit_acc_type').value,
+                credit_limit: parseFloat(document.getElementById('edit_acc_limit').value) || 0,
+            };
+
+            const res = await fetch(`${API_URL}/accounts/${id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                document.getElementById('edit-account-modal').classList.remove('active');
+                loadData();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Error");
+            }
+        }
+
+        // --- CATEGORIES CRUD ---
+        async function addCategory() {
+            const name = document.getElementById('new_cat_name').value;
+            if (!name) return alert("Enter name!");
+            const parentId = document.getElementById('new_cat_parent').value;
+            const data = {
+                name,
+                type: document.getElementById('new_cat_type').value,
+            };
+            if (parentId) {
+                data.parent_id = parseInt(parentId);
+            }
+
+            const res = await fetch(`${API_URL}/categories/`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                document.getElementById('new_cat_name').value = '';
+                loadData();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Error");
+            }
+        }
+
+        async function editCategory(id, oldName, oldType) {
+            const newName = prompt("New category name:", oldName);
+            if (!newName) return;
+            await fetch(`${API_URL}/categories/${id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName, type: oldType || "expense" })
+            });
+            loadData();
+        }
+
+        // --- INITIALIZATION ---
+        loadData();
+    </script>
+</body>
+</html>

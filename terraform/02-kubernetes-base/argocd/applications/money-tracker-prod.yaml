@@ -1,0 +1,80 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: money-tracker-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # ---------------------------------------------------------------------------
+  # Source: GitHub repository
+  # ArgoCD polls this path for changes to kustomization.yaml.
+  # When Jenkins pushes a new image tag, ArgoCD detects the diff and syncs.
+  # ---------------------------------------------------------------------------
+  source:
+    repoURL: https://github.com/YOUR_GITHUB_USERNAME/money-tracker-devops.git
+    targetRevision: main
+    path: k8s/overlays/prod
+
+  # ---------------------------------------------------------------------------
+  # Destination: deploy to this cluster and namespace
+  # "https://kubernetes.default.svc" = the same cluster ArgoCD runs on
+  # ---------------------------------------------------------------------------
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: money-talks-prod
+
+  # ---------------------------------------------------------------------------
+  # Sync Policy: MANUAL (Continuous Delivery, not Continuous Deployment)
+  #
+  # ArgoCD detects OutOfSync → shows diff in UI → engineer clicks "Sync".
+  # This gives a human gate before anything reaches production.
+  #
+  # INTERVIEW NOTE:
+  #   Continuous Delivery vs Continuous Deployment:
+  #   - Delivery: pipeline prepares release, human approves deploy
+  #   - Deployment: every change auto-deploys (no human gate)
+  #   Production (fintech) likely prefers Delivery for prod — compliance.
+  # ---------------------------------------------------------------------------
+  syncPolicy:
+    # automated: disabled — manual sync required
+    # Uncomment below to enable auto-sync:
+    # automated:
+    #   prune: true
+    #   selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ServerSideApply=true
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # ---------------------------------------------------------------------------
+  # Ignore differences that Kubernetes mutates automatically
+  # (e.g., ServiceAccount gets imagePullSecrets injected by admission controller)
+  # ---------------------------------------------------------------------------
+  ignoreDifferences:
+    - group: ""
+      kind: ServiceAccount
+      jsonPointers:
+        - /imagePullSecrets
+    # -----------------------------------------------------------------
+    # Ignore replica count — managed by HPA, not Git.
+    # Without this, HPA scales pods → ArgoCD sees OutOfSync → sync
+    # resets replicas → HPA scales again → infinite loop.
+    # -----------------------------------------------------------------
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
+  revisionHistoryLimit: 10

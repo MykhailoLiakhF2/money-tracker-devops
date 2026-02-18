@@ -1,0 +1,66 @@
+# =============================================================================
+# .gitignore — Money Tracker (Production Grade)
+# =============================================================================
+
+# --- Secrets (NEVER commit) ---
+.secrets/
+*.pem
+*.key
+*.token
+*.env
+*.env.*
+kubeconfig
+secrets.*
+
+# --- Terraform ---
+.terraform/
+**/.terraform/*
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# tfvars may contain sensitive data
+*.tfvars
+*.tfvars.json
+
+# --- Jenkins ---
+jenkins/secrets/
+*.war
+
+# --- GCP credentials ---
+*-sa-key.json
+service-account-*.json
+terraform-*-key.json
+
+# --- Kubernetes ---
+k8s/token_cloudsec.txt
+
+# --- ArgoCD secrets ---
+terraform/02-kubernetes-base/argocd/repository-secret.yaml
+
+# --- Python ---
+__pycache__/
+venv/
+*.pyc
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+tmp/

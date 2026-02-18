@@ -1,0 +1,101 @@
+# =============================================================================
+# kube-prometheus-stack — Helm Values
+# =============================================================================
+# Prometheus + Grafana + Node Exporter + kube-state-metrics
+# Install:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm install monitoring prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace \
+#     -f monitoring/helm-values/values.yaml
+# =============================================================================
+
+# ===== Grafana =====
+grafana:
+  # Admin password — change after first login
+  adminPassword: "admin"
+
+  # Ingress — accessible via grafana.your-domain.com
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/whitelist-source-range: "YOUR_IP/32"
+    hosts:
+      - grafana.your-domain.com
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.your-domain.com
+
+  # Persistence — keep dashboards across restarts
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClassName: standard-rwo
+
+  # Reduce resource usage (small cluster)
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# ===== Prometheus =====
+prometheus:
+  prometheusSpec:
+    # Retention — keep 7 days of metrics
+    retention: 7d
+
+    # Storage — persist metrics across restarts
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard-rwo
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+    # Reduce resource usage
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Scrape money-talks namespaces
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+
+# ===== Alertmanager =====
+# Disabled — not needed for portfolio project
+alertmanager:
+  enabled: false
+
+# ===== Node Exporter =====
+# Collects node-level metrics (CPU, memory, disk per node)
+nodeExporter:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+
+# ===== kube-state-metrics =====
+# Collects Kubernetes object metrics (pods, deployments, HPA)
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi

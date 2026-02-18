@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: FRONTEND_IMAGE
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          # -----------------------------------------------------------------
+          # NGINX needs some capabilities to bind port 80 and manage workers.
+          # We can't do runAsNonRoot easily with default nginx image on port 80,
+          # but we CAN drop all caps and add back only what's needed.
+          #
+          # CHOWN, SETGID, SETUID — needed by nginx master process at startup
+          # to set worker process ownership.
+          #
+          # NOTE: readOnlyRootFilesystem is NOT set here because nginx needs
+          # to write to /var/cache/nginx and /var/run/nginx.pid.
+          # Production alternative: use nginx-unprivileged image on port 8080.
+          # -----------------------------------------------------------------
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+              add: ["CHOWN", "SETGID", "SETUID"]
+          # tmpfs for nginx runtime dirs
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: nginx-tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: nginx-tmp
+          emptyDir: {}
