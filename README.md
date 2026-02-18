@@ -23,7 +23,7 @@ flowchart TD
         Ingress -->|Route| Frontend["Frontend Pods<br/>(NGINX)"]
         Ingress -->|API| Backend["Backend Pods<br/>(FastAPI)"]
         
-        Backend -->|Cache| Redis[(Redis Cluster)]
+        Backend -->|Cache| Redis[(Redis StatefulSet)]
         Backend -->|Persistence| DB[(PostgreSQL)]
         
         HPA[HPA] -.->|Auto-Scale| Backend
@@ -85,18 +85,18 @@ To deploy this environment from scratch, please follow our detailed **[SETUP_GUI
 ## 📊 Technical Deep Dive
 
 ### High Availability & Scaling
-The system is stress-tested to handle bursts up to **150+ Requests Per Second**. The HPA is tuned to scale the backend from 1 to 10 replicas based on CPU/Memory utilization thresholds.
+The system is stress-tested to handle bursts up to **150+ Requests Per Second**. The HPA is tuned to scale the backend from 1 to 16 replicas based on CPU utilization thresholds (target: 70%).
 
-| Metric | value |
+| Metric | Value |
 |:---|:---|
 | **Avg Latency** | 134ms |
-| **Uptime (SLA)** | 99.9% Target |
+| **Peak Load Tested** | 150+ RPS / 350 concurrent users |
 | **Scaling Warm-up** | < 45 seconds |
 
 ### Security Model
-- **Network Isolation**: All pods are isolated by default. Communication is only allowed between white-listed services.
-- **Identity**: Jenkins uses Google Service Accounts with Least Privilege IAM roles.
-- **Image Integrity**: Only signed or scanned images from the private Artifact Registry are allowed into the cluster.
+- **Network Isolation**: All pods are isolated by default. 7 granular NetworkPolicies enforce least-privilege communication (zero-trust).
+- **Identity**: Jenkins uses Google Service Accounts with Least Privilege IAM roles bound at repository level.
+- **Image Integrity**: All images are scanned by Trivy for CRITICAL CVEs before deployment. A failing scan blocks the pipeline — ArgoCD never sees the new tag.
 
 ---
 
@@ -122,7 +122,7 @@ The system is stress-tested to handle bursts up to **150+ Requests Per Second**.
 ## 👨‍💻 Author
 
 **Mykhailo Liakh**  
-*DevOps Engineer / Infrastructure Architect*
+*DevOps Engineer*
 
 ---
 > [!NOTE]  

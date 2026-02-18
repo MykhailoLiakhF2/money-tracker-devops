@@ -3,13 +3,14 @@ kind: Kustomization
 
 namespace: money-talks-dev
 
-  # secrets.yaml excluded from Git — managed manually (same as prod)
+# secrets.yaml is NOT tracked in Git — create it manually before deploying:
+#   kubectl apply -f k8s/overlays/dev/secrets-template.yaml -n money-talks-dev
+# (after filling in real values)
 resources:
 - ../../base
 - namespace.yaml
 - ingress.yaml
 - resourcequota.yaml
-- secrets.yaml
 
 images:
 - name: BACKEND_IMAGE

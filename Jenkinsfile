@@ -10,15 +10,13 @@
 //     @Library('enterprise-ci-lib') _
 //   and all vars/* functions become available without 'load'.
 //   We use 'load' here because our library is in the same repo.
-//
-// See Jenkinsfile.monolith for the original non-library version.
 // =============================================================================
 
 // -- Constants --
 def REGISTRY       = 'REGION-docker.pkg.dev/YOUR_PROJECT_ID/YOUR_REGISTRY'
 def BACKEND_IMAGE  = 'money-talks-backend'
 def FRONTEND_IMAGE = 'money-talks-frontend'
-def REPO_URL       = 'https://github.com/YOUR_GITHUB_USERNAME/money-tracker-app.git'
+def REPO_URL       = 'https://github.com/YOUR_GITHUB_USERNAME/money-tracker-devops.git'
 def GIT_COMMIT     = ''
 
 // -- Shared library references (populated after checkout) --
@@ -290,9 +288,9 @@ pipeline {
         }
 
         // =====================================================================
-        // Stage 5a: Deploy to Dev (dev-anti branch only)
+        // Stage 5a: Deploy to Dev (dev branch only)
         // =====================================================================
-        // MULTI-ENV: dev-anti branch → updates dev overlay → ArgoCD auto-syncs
+        // MULTI-ENV: dev branch → updates dev overlay → ArgoCD auto-syncs
         // to money-talks-dev namespace. Allows testing before prod.
         // =====================================================================
         stage('Deploy to Dev') {

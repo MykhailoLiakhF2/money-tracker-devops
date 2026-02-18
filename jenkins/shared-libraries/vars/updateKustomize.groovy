@@ -9,7 +9,7 @@
 //       'FRONTEND_IMAGE': "${REGISTRY}/money-talks-frontend:${GIT_COMMIT}"
 //     ],
 //     credentialsId: 'github-pat',
-//     repoUrl:       'https://github.com/YOUR_GITHUB_USERNAME/money-tracker-app.git'
+//     repoUrl:       'https://github.com/YOUR_GITHUB_USERNAME/money-tracker-devops.git'
 //   )
 //
 // WHY this exists:
@@ -115,7 +115,10 @@ def call(Map config) {
                     git commit -m "ci: update image tags to \$(echo ${imageArgs} | head -1 | sed 's/.*://') [skip ci]"
 
                     # --- Step 5: Push to GitHub ---
-                    git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@github.com/YOUR_GITHUB_USERNAME/money-tracker-app.git HEAD:${branch}
+                    # Strip 'https://' from repoUrl, inject credentials into URL.
+                    # Using the passed-in repoUrl keeps this function repo-agnostic.
+                    REPO_HOST=\$(echo "${repoUrl}" | sed 's|https://||')
+                    git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@\${REPO_HOST} HEAD:${branch}
                     echo "✅ Pushed updated tags to GitHub"
                 fi
             """

@@ -3,13 +3,13 @@ kind: Kustomization
 
 namespace: money-talks-prod
 
-# secrets.yaml excluded from Git (.gitignore) — managed manually.
-# Will be replaced by SealedSecrets in Phase 4.
+# secrets.yaml is NOT tracked in Git — create it manually before deploying:
+#   kubectl apply -f k8s/overlays/prod/secrets-template.yaml -n money-talks-prod
+# (after filling in real values)
 resources:
 - ../../base
 - namespace.yaml
 - ingress.yaml
-- secrets.yaml
 
 images:
 - name: BACKEND_IMAGE
@@ -18,7 +18,7 @@ images:
 - name: FRONTEND_IMAGE
   newName: REGION-docker.pkg.dev/YOUR_PROJECT_ID/YOUR_REGISTRY/money-talks-frontend
   newTag: latest
-  
+
 replicas:
 - count: 3
   name: backend
